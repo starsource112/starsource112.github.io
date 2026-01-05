@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>巡演地图</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        .bg-poster {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: url("./Back.jpg") no-repeat center center;
+            z-index: 1;
+            background-size: contain;
+        }
+
+        .map-container {
+            width: 90%;
+            max-width: 1450px;
+            position: relative;
+            z-index: 2;
+            margin-left: -480px;
+            margin-bottom: -160px;
+            margin-right: auto;
+        }
+
+        .city {
+            fill: #000000;
+            stroke: #409eff;
+            stroke-width: 1;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            transform: scale(1.2);
+            transform-origin: center center;
+        }
+
+        /* 2023基础城市：X轴右移5px，Y轴不动（统一间距基准） */
+        .city:not(.city-2024) {
+            transform: scale(1.2) translate(5px, 0);
+        }
+
+        .city:hover {
+            fill: #409eff;
+            filter: drop-shadow(0 0 13px #409eff);
+        }
+
+        .city-2024 {
+            stroke: #ff9500;
+            stroke-width: 1.2;
+            transform: scale(1.2);
+            transform-origin: center center;
+        }
+
+        /* 所有重复城市：X轴左移5px（和武汉间距完全一致），Y轴0，无额外偏移 */
+        .city-2024.city-duplicate {
+            transform: scale(1.2) translate(8px, 0);
+        }
+
+        .city-2024:hover {
+            fill: #ff9500;
+            filter: drop-shadow(0 0 13px #ff9500);
+        }
+
+        .city-duplicate {
+            fill: #000000;
+            stroke: #ff9500;
+            stroke-width: 1.2;
+        }
+
+        .city-duplicate:hover {
+            fill: #ff9500;
+            filter: drop-shadow(0 0 13px #ff9500);
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 8px 12px;
+            background: rgb(0, 0, 0);
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 100;
+            border: 1px solid;
+            white-space: nowrap;
+            line-height: 1.6;
+        }
+
+        .vertical-title {
+            position: absolute;
+            right: 115px;
+            top: 48%;
+            transform: translateY(-50%);
+            font-size: 120px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            z-index: 3;
+            white-space: nowrap;
+            /* 1. 字体蓝橙渐变（替换原有橙色color） */
+            background-image: linear-gradient(to top, #066eff, #ff9500);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            line-height: 1.1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-poster"></div>
+    <div class="vertical-title">巡<br>演<br>地<br>图</div>
+
+    <div class="map-container">
+        <div class="tooltip" id="tooltip"></div>
+        <div class="tooltip" id="tooltip"></div>
+        <svg viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
+            <a xlink:href="https://weibo.com/7487788632/4887991557037071" target="_blank">
+                <path class="city" d="M720,205 L730,195 L740,205 L730,215 Z" data-city="温州" data-date="2023.03.31">
+                </path>
+            </a>
+            <a xlink:href="https://video.weibo.com/show?fid=1034:4890522364608563" target="_blank">
+                <path class="city" d="M695,185 L705,175 L715,185 L705,195 Z" data-city="杭州" data-date="2023.04.02">
+                </path>
+            </a>
+            <a xlink:href="https://video.weibo.com/show?fid=1034:4921311026413607" target="_blank">
+                <path class="city" d="M655,185 L665,175 L675,185 L665,195 Z" data-city="上海" data-date="2023.05.01">
+                </path>
+            </a>
+            <!-- 2023版南京：左移15px -->
+            <a xlink:href="https://weibo.com/7487788632/4897326356765076" target="_blank">
+                <path class="city" d="M615,185 L625,175 L635,185 L625,195 Z" data-city="南京" data-date="2023.05.02">
+                </path>
+            </a>
+            <a xlink:href="https://video.weibo.com/show?fid=1034:4929318992937127" target="_blank">
+                <path class="city" d="M405,285 L415,275 L425,285 L415,295 Z" data-city="成都" data-date="2023.07.15">
+                </path>
+            </a>
+            <a xlink:href="https://video.weibo.com/show?fid=1034:4931509149434037" target="_blank">
+                <path class="city" d="M430,305 L440,295 L450,305 L440,315 Z" data-city="重庆" data-date="2023.07.16">
+                </path>
+            </a>
+            <!-- 长沙：基准坐标（Y轴核心对齐参考：305/295/315） -->
+            <a xlink:href="https://weibo.com/7487788632/4927405842235542" target="_blank">
+                <path class="city" d="M505,305 L515,295 L525,305 L515,315 Z" data-city="长沙" data-date="2023.07.22">
+                </path>
+            </a>
+            <!-- 武汉2023：基准坐标 -->
+            <a xlink:href="https://weibo.com/7487788632/4927475433868505" target="_blank">
+                <path class="city" d="M530,285 L540,275 L550,285 L540,295 Z" data-city="武汉" data-date="2023.07.23">
+                </path>
+            </a>
+            <!-- 北京2023：下移30px 左移20px -->
+            <a xlink:href="https://weibo.com/7487788632/4938965733347343" target="_blank">
+                <path class="city" d="M570,85 L580,75 L590,85 L580,95 Z" data-city="北京" data-date="2023.08.25"></path>
+            </a>
+            <!-- 天津2023：下移30px 左移20px -->
+            <a xlink:href="https://weibo.com/7487788632/4939335519699922" target="_blank">
+                <path class="city" d="M595,105 L605,95 L615,105 L605,115 Z" data-city="天津" data-date="2023.08.26">
+                </path>
+            </a>
+            <!-- 2023版深圳：左移65px（原750→685） -->
+            <a xlink:href="https://weibo.com/7487788632/4951655314362961" target="_blank">
+                <path class="city" d="M685,325 L695,315 L705,325 L695,335 Z" data-city="深圳" data-date="2023.09.28">
+                </path>
+            </a>
+            <!-- 2023版广州：左移65px（原725→660） -->
+            <a xlink:href="https://weibo.com/7487788632/4951744502568118" target="_blank">
+                <path class="city" d="M660,325 L670,315 L680,325 L670,335 Z" data-city="广州" data-date="2023.09.29">
+                </path>
+            </a>
+
+            <!-- 2024年城市：修复上海2024.03.02路径错误，匹配地理方位+5px基准间距 -->
+            <!-- 2024版合肥：左移15px -->
+            <a xlink:href="https://weibo.com/7487788632/5007417543229523" target="_blank">
+                <path class="city city-2024" d="M590,205 L600,195 L610,205 L600,215 Z" data-city="合肥"
+                    data-date="2024.03.01"></path>
+            </a>
+            <!-- 修复上海2024.03.02：修正错误的路径坐标，恢复菱形形状 -->
+            <a xlink:href="https://weibo.com/7487788632/5007835215168359" target="_blank">
+                <path class="city city-2024 city-duplicate" d="M660,185 L670,175 L680,185 L670,195 Z" data-city="上海"
+                    data-date="2024.03.02"></path>
+            </a>
+            <!-- 2024版南京：左移15px -->
+            <a xlink:href="https://weibo.com/7487788632/5008173573869122" target="_blank">
+                <path class="city city-2024 city-duplicate" d="M620,185 L630,175 L640,185 L630,195 Z" data-city="南京"
+                    data-date="2024.03.03"></path>
+            </a>
+            <!-- 济南2024：下移30px 左移20px（替换为最新链接） -->
+            <a xlink:href="https://weibo.com/7487788632/5012900265854340" target="_blank">
+                <path class="city city-2024" d="M620,125 L630,115 L640,125 L630,135 Z" data-city="济南"
+                    data-date="2024.03.16"></path>
+            </a>
+            <!-- 青岛2024：下移30px 左移20px（替换为最新链接） -->
+            <a xlink:href="https://weibo.com/7487788632/5013321658927855" target="_blank">
+                <path class="city city-2024" d="M595,125 L605,115 L615,125 L605,135 Z" data-city="青岛"
+                    data-date="2024.03.17"></path>
+            </a>
+            <!-- 2024版广州：左移65px（原730→665） -->
+            <a xlink:href="https://video.weibo.com/show?fid=1034:5051707718303790" target="_blank">
+                <path class="city city-2024 city-duplicate" d="M665,325 L675,315 L685,325 L675,335 Z" data-city="广州"
+                    data-date="2024.03.31"></path>
+            </a>
+            <!-- 贵阳2024：右移35px 下移60px（替换为最新链接） -->
+            <a xlink:href="https://weibo.com/7487788632/5020213835991851" target="_blank">
+                <path class="city city-2024" d="M490,385 L500,375 L510,385 L500,395 Z" data-city="贵阳"
+                    data-date="2024.04.05"></path>
+            </a>
+            <!-- 重庆2024（替换为最新链接） -->
+            <a xlink:href="https://weibo.com/7487788632/5020938838476346" target="_blank">
+                <path class="city city-2024 city-duplicate" d="M435,305 L445,295 L455,305 L445,315 Z" data-city="重庆"
+                    data-date="2024.04.06"></path>
+            </a>
+            <a xlink:href="https://video.weibo.com/show?fid=1034:5062660589289513" target="_blank">
+                <path class="city city-2024 city-duplicate" d="M535,285 L545,275 L555,285 L545,295 Z" data-city="武汉"
+                    data-date="2024.07.27"></path>
+            </a>
+            <a xlink:href="https://video.weibo.com/show?fid=1034:5063048377860113" target="_blank">
+                <path class="city city-2024 city-duplicate" d="M510,305 L520,295 L530,305 L520,315 Z" data-city="长沙"
+                    data-date="2024.07.28"></path>
+            </a>
+            <!-- 北京2024：下移30px 左移20px -->
+            <a xlink:href="https://video.weibo.com/show?fid=1034:5064810422009890" target="_blank">
+                <path class="city city-2024 city-duplicate" d="M575,85 L585,75 L595,85 L585,95 Z" data-city="北京"
+                    data-date="2024.08.03"></path>
+            </a>
+            <!-- 天津2024：下移30px 左移20px -->
+            <a xlink:href="https://video.weibo.com/show?fid=1034:5065578772103297" target="_blank">
+                <path class="city city-2024 city-duplicate" d="M600,105 L610,95 L620,105 L610,115 Z" data-city="天津"
+                    data-date="2024.08.04"></path>
+            </a>
+            <!-- 2024版厦门：左移65px（原775→710）+ 保持与长沙垂直坐标一致 -->
+            <a xlink:href="https://video.weibo.com/show?fid=1034:5072912676225028" target="_blank">
+                <path class="city city-2024" d="M710,305 L720,295 L730,305 L720,315 Z" data-city="厦门"
+                    data-date="2024.08.10"></path>
+            </a>
+            <!-- 2024版深圳：左移65px（原755→690） -->
+            <a xlink:href="https://video.weibo.com/show?fid=1034:5075936173817941" target="_blank">
+                <path class="city city-2024 city-duplicate" d="M690,325 L700,315 L710,325 L700,335 Z" data-city="深圳"
+                    data-date="2024.08.11"></path>
+            </a>
+            <a xlink:href="https://video.weibo.com/show?fid=1034:5088716541329468" target="_blank">
+                <path class="city city-2024 city-duplicate" d="M410,285 L420,275 L430,285 L420,295 Z" data-city="成都"
+                    data-date="2024.08.17"></path>
+            </a>
+            <!-- 西安2024：右移40px 下移30px -->
+            <a xlink:href="https://video.weibo.com/show?fid=1034:5090098597789732" target="_blank">
+                <path class="city city-2024" d="M495,345 L505,335 L515,345 L505,355 Z" data-city="西安"
+                    data-date="2024.08.18"></path>
+            </a>
+            <!-- 2024版杭州：累计右移15px（替换为最新链接） -->
+            <a xlink:href="https://weibo.com/7487788632/5096700696072088" target="_blank">
+                <path class="city city-2024 city-duplicate" d="M700,185 L710,175 L720,185 L710,195 Z" data-city="杭州"
+                    data-date="2024.09.16"></path>
+            </a>
+            <!-- 2024.09.17上海：右移5px -->
+            <a xlink:href="https://video.weibo.com/show?fid=1034:5113015305961481" target="_blank">
+                <path class="city city-2024 city-duplicate" d="M665,185 L675,175 L685,185 L675,195 Z" data-city="上海"
+                    data-date="2024.09.17"></path>
+            </a>
+        </svg>
+    </div>
+
+    <script>
+        const tooltip = document.getElementById('tooltip');
+        const cities = document.querySelectorAll('.city');
+
+        cities.forEach(city => {
+            city.addEventListener('mouseover', (e) => {
+                const cityName = e.target.getAttribute('data-city');
+                const date = e.target.getAttribute('data-date');
+                tooltip.innerHTML = `
+                    <div><strong>${cityName}</strong></div>
+                    <div>${date}</div>
+                `;
+
+                let targetColor = '#409eff';
+                if (city.classList.contains('city-2024')) {
+                    targetColor = '#ff9500';
+                }
+                tooltip.style.borderColor = targetColor;
+                tooltip.style.color = targetColor;
+
+                const cityRect = city.getBoundingClientRect();
+                const containerRect = document.querySelector('.map-container').getBoundingClientRect();
+                const relativeLeft = cityRect.right - containerRect.left + 15;
+                const relativeTop = cityRect.top - containerRect.top + (cityRect.height - tooltip.offsetHeight) / 2;
+
+                tooltip.style.left = `${relativeLeft}px`;
+                tooltip.style.top = `${relativeTop}px`;
+                tooltip.style.opacity = 1;
+            });
+
+            city.addEventListener('mouseout', () => {
+                tooltip.style.opacity = 0;
+            });
+
+            city.addEventListener('mousemove', (e) => {
+                const cityRect = city.getBoundingClientRect();
+                const containerRect = document.querySelector('.map-container').getBoundingClientRect();
+                const relativeLeft = cityRect.right - containerRect.left + 15;
+                const relativeTop = cityRect.top - containerRect.top + (cityRect.height - tooltip.offsetHeight) / 2;
+
+                tooltip.style.left = `${relativeLeft}px`;
+                tooltip.style.top = `${relativeTop}px`;
+            });
+        });
+    </script>
+</body>
+
+</html>

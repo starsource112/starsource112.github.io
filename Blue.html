@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>预告/PV合集</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Noto+Sans+SC:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        /* 页面加载动画（轻量化，仅透明度变化） */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* 背景柔和流动动效（轻量化，仅小幅位置偏移，无超大尺寸） */
+        @keyframes backgroundFlow {
+            0% {
+                background-position: 0% 0%;
+            }
+
+            50% {
+                background-position: 5% 5%;
+            }
+
+            100% {
+                background-position: 0% 0%;
+            }
+        }
+
+        /* 极致轻量化背景星星：仅静态浅淡点缀，无动画（消除卡顿核心） */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            /* 仅3颗星星（最少渲染节点），小尺寸，低透明度，无动画 */
+            background:
+                radial-gradient(3px 3px at 200px 150px, rgba(255, 255, 255, 0.6), transparent 100%),
+                radial-gradient(3px 3px at 800px 100px, rgba(255, 255, 255, 0.6), transparent 100%),
+                radial-gradient(2px 2px at 600px 450px, rgba(255, 255, 255, 0.6), transparent 100%);
+            background-size: 600px 600px;
+            z-index: 1;
+            pointer-events: none;
+            /* 取消硬件加速，静态元素无需额外消耗 */
+        }
+
+        body {
+            /* 简化背景：单一渐变，无多重叠加，降低渲染压力 */
+            background: linear-gradient(135deg, #e3f5ff 0%, #d3eaff 100%);
+            background-size: 100% 100%;
+            padding: 40px 20px;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            /* 轻量化动画：仅淡入，背景流动放缓至30秒，几乎无性能消耗 */
+            animation: fadeIn 0.8s ease-out,
+                backgroundFlow 30s ease-in-out infinite;
+        }
+
+        /* 鼠标跟随装饰点（简化过渡，仅透明度变化） */
+        .cursor-dot {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(100, 181, 246, 0.5);
+            pointer-events: none;
+            z-index: 9998;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            /* 取消宽度/高度过渡，仅保留透明度，降低消耗 */
+            transition: opacity 0.2s;
+        }
+
+        body:hover .cursor-dot {
+            opacity: 1;
+        }
+
+        /* 核心：网格容器三行四列（删除计日组件，优化布局） */
+        .box-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(3, 320px);
+            gap: 25px;
+            max-width: 1450px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* 磁带容器：置于页面正中间，无计日组件（原有代码，未改动） */
+        .film-card-wrapper {
+            grid-column: 2 / 4;
+            grid-row: 2 / 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 1s ease-out 0.2s both;
+            position: relative;
+            z-index: 3;
+        }
+
+        /* 修复问题1：.film-card 类名纯净，样式生效（删除前面无关字符） */
+        .film-card {
+            background: url(./film.png) no-repeat center center;
+            background-size: contain;
+            width: 420px;
+            height: 460px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: transform 0.4s ease;
+        }
+
+        .film-card::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            filter: blur(10px);
+            z-index: -1;
+            transform: scale(0.95);
+            transition: transform 0.4s ease;
+        }
+
+        /* 新增：磁带左侧超链接（左半部分，不遮挡图片，保留点击功能） */
+        .film-card .link-left {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 50%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 新增：磁带右侧超链接（右半部分，不遮挡图片，保留点击功能） */
+        .film-card .link-right {
+            display: block;
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 50%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .film-card:hover {
+            transform: translateY(-20px);
+            filter: brightness(1.35);
+        }
+
+        .film-card:hover::before {
+            transform: scale(1);
+        }
+
+        .film-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(5px 5px 8px rgba(0, 0, 0, 0.15));
+            transition: filter 0.3s ease;
+        }
+
+        .film-card:hover .film-img {
+            filter: drop-shadow(8px 8px 12px rgba(0, 0, 0, 0.2));
+        }
+
+        /* 五角星卡片样式 */
+        .box {
+            background: url("./Star.png") no-repeat center center;
+            background-color: transparent;
+            background-size: contain;
+            width: 280px;
+            height: 280px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.4s ease;
+            animation: fadeIn 0.8s ease-out calc(var(--delay, 0) * 0.1s) both;
+        }
+
+        /* 左星星标记（前5颗）：引力、天空树、冰岛以北、荆棘鸟、请认真听我的名字 */
+        .box.left-star {
+            --star-side: left;
+        }
+
+        /* 右星星标记（后5颗）：卡戎、连梦、一个星际的距离、蒲公英、月光 */
+        .box.right-star {
+            --star-side: right;
+        }
+
+        /* 五角星背景光效（简化过渡，无多余缩放） */
+        .box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center,
+                    rgba(100, 181, 246, 0.2) 0%,
+                    rgba(144, 202, 249, 0.1) 50%,
+                    transparent 100%);
+            border-radius: 50%;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        /* 五角星边框光效（简化动画，降低帧率） */
+        .box::after {
+            content: '';
+            position: absolute;
+            width: 90%;
+            height: 90%;
+            border: 2px solid rgba(182, 216, 251, 0);
+            border-radius: 50%;
+            z-index: -1;
+            transition: border-color 0.4s ease;
+        }
+
+        .box:hover {
+            transform: scale(1.08) rotate(5deg);
+        }
+
+        .box:hover::before {
+            opacity: 1;
+        }
+
+        .box:hover::after {
+            border-color: rgba(182, 216, 251, 0.8);
+            animation: borderPulse 3s infinite alternate; /* 动画放缓，降低消耗 */
+        }
+
+        @keyframes borderPulse {
+            from {
+                border-color: rgba(182, 216, 251, 0.5);
+            }
+
+            to {
+                border-color: rgba(182, 216, 251, 1);
+            }
+        }
+
+        .box a {
+            text-decoration: none;
+            width: 90%;
+            height: 90%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+            padding: 10px;
+            z-index: 1;
+            transition: transform 0.3s ease;
+        }
+
+        .box:hover a {
+            transform: scale(1.05);
+        }
+
+        /* 卡片文字样式 */
+        .box-title {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #003a66;
+            text-shadow: 0 0 8px rgba(0, 105, 180, 0.5);
+            line-height: 1.3;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .box-title::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #0077c2, transparent);
+            transition: width 0.4s ease;
+        }
+
+        .box:hover .box-title {
+            color: #005a99;
+            text-shadow: 0 0 12px rgba(0, 105, 180, 0.8);
+        }
+
+        .box:hover .box-title::after {
+            width: 80%;
+        }
+
+        .box-date {
+            font-size: 20px;
+            color: #002f7b;
+            text-shadow: 0 0 8px rgba(192, 245, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        .box:hover .box-date {
+            transform: translateY(2px);
+            text-shadow: 0 0 12px rgba(192, 245, 255, 1);
+        }
+
+        /* 全屏图片遮罩层（简化过渡，无多余缩放） */
+        .fullscreen-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 18, 30, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .fullscreen-mask.active {
+            opacity: 1;
+        }
+
+        .fullscreen-img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 核心：左右两根指针（磁带两孔为原点、超长、默认隐形、分区负责） */
+        .left-pointer {
+            position: absolute;
+            top: 50%;
+            left: calc(50% - 95px);
+            transform: translate(-50%, -50%) rotate(0deg);
+            width: 30px;
+            height: 500px;
+            background: linear-gradient(to bottom,
+                    rgba(100, 181, 246, 0.95) 0%,
+                    rgba(182, 216, 251, 0.7) 80%,
+                    rgba(182, 216, 251, 0) 100%);
+            clip-path: polygon(50% 0%, 20% 25px, 80% 25px, 50% 0%, 50% 100%, 45% 100%, 45% 25px, 55% 25px, 55% 100%, 50% 100%);
+            border-radius: 2px 2px 0 0;
+            pointer-events: none;
+            z-index: 1;
+            transition: transform 0.06s ease-out, opacity 0.3s ease;
+            opacity: 0;
+        }
+
+        .right-pointer {
+            position: absolute;
+            top: 50%;
+            left: calc(50% + 95px);
+            transform: translate(-50%, -50%) rotate(0deg);
+            width: 30px;
+            height: 500px;
+            background: linear-gradient(to bottom,
+                    rgba(100, 181, 246, 0.95) 0%,
+                    rgba(182, 216, 251, 0.7) 80%,
+                    rgba(182, 216, 251, 0) 100%);
+            clip-path: polygon(50% 0%, 20% 25px, 80% 25px, 50% 0%, 50% 100%, 45% 100%, 45% 25px, 55% 25px, 55% 100%, 50% 100%);
+            border-radius: 2px 2px 0 0;
+            pointer-events: none;
+            z-index: 1;
+            transition: transform 0.06s ease-out, opacity 0.3s ease;
+            opacity: 0;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 1200px) {
+            .box-container {
+                grid-template-columns: repeat(2, 1fr);
+                grid-template-rows: repeat(6, 320px);
+            }
+
+            .film-card-wrapper {
+                grid-column: 1 / 3;
+                grid-row: 4 / 5;
+            }
+
+            .left-pointer,
+            .right-pointer {
+                height: 420px;
+                left: calc(50% - 85px);
+            }
+
+            .right-pointer {
+                left: calc(50% + 85px);
+            }
+
+            .film-card {
+                width: 320px;
+                height: 360px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .box-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: repeat(11, 320px);
+                gap: 20px;
+            }
+
+            .film-card-wrapper {
+                grid-column: 1 / 2;
+                grid-row: 6 / 7;
+            }
+
+            .box {
+                width: 240px;
+                height: 240px;
+            }
+
+            .film-card {
+                width: 280px;
+                height: 320px;
+            }
+
+            .left-pointer,
+            .right-pointer {
+                width: 25px;
+                height: 350px;
+                left: calc(50% - 70px);
+            }
+
+            .right-pointer {
+                left: calc(50% + 70px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 鼠标跟随装饰点 -->
+    <div class="cursor-dot" id="cursorDot"></div>
+
+    <div class="box-container">
+        <!-- 左右两根指针（磁带两孔为原点，固定不动） -->
+        <div class="left-pointer" id="leftPointer"></div>
+        <div class="right-pointer" id="rightPointer"></div>
+
+        <!-- 磁带容器（页面正中间，无计日组件） -->
+        <div class="film-card-wrapper">
+            <div class="film-card">
+                <!-- 左侧超链接：替换为你的左半部分目标地址 -->
+                <a href="https://b23.tv/YXwtsdL" target="_blank" class="link-left"></a>
+                <!-- 右侧超链接：替换为你的右半部分目标地址 -->
+                <a href="https://b23.tv/Gj5MRcC" target="_blank" class="link-right"></a>
+            </div>
+        </div>
+
+        <!-- 左侧5颗星星（左指针负责）- 填充指定超链接 -->
+        <div class="box left-star" style="--delay: 1">
+            <a href="https://video.weibo.com/show?fid=1034:5139434681597992" target="_blank">
+                <div class="box-title">蒲公英<br>（Dandelion）</div>
+                <div class="box-date">2023-12-30</div>
+            </a>
+        </div>
+
+        <div class="box left-star" style="--delay: 2">
+            <a href="https://b23.tv/fbgu8hT" target="_blank">
+                <div class="box-title">荆棘鸟<br>（The Thorn Birds）</div>
+                <div class="box-date">2024-02-25</div>
+            </a>
+        </div>
+
+        <div class="box right-star" style="--delay: 3">
+            <a href="https://weibo.com/7487788632/4569373883507898" target="_blank">
+                <div class="box-title">天空树<br>（Sky Tree）</div>
+                <div class="box-date">2020-11-26</div>
+            </a>
+        </div>
+
+        <div class="box right-star" style="--delay: 4">
+            <a href="https://video.weibo.com/show?fid=1034:4688741604982807" target="_blank">
+                <div class="box-title">请认真听，我的名字<br>（Can You Hear My Name）</div>
+                <div class="box-date">2021-10-05</div>
+            </a>
+        </div>
+
+        <div class="box left-star" style="--delay: 5">
+            <a href="https://weibo.com/7487788632/4972402250350865" target="_blank">
+                <div class="box-title">连梦<br>（Dream of Losing You）</div>
+                <div class="box-date">2023-11-28</div>
+            </a>
+        </div>
+
+        <!-- 右侧5颗星星（右指针负责）- 填充指定超链接 -->
+        <div class="box right-star" style="--delay: 6">
+            <a href="https://weibo.com/7487788632/4718382995213457" target="_blank">
+                <div class="box-title">一个星际的距离<br>（Interstellar）</div>
+                <div class="box-date">2021-12-31</div>
+            </a>
+        </div>
+
+        <div class="box left-star" style="--delay: 7">
+            <a href="https://weibo.com/7487788632/4908243908823535" target="_blank">
+                <div class="box-title">冰岛以北<br>（To The North）</div>
+                <div class="box-date">2023-06-03</div>
+            </a>
+        </div>
+
+        <div class="box left-star" style="--delay: 8">
+            <a href="https://video.weibo.com/show?fid=1034:4873489908432945" target="_blank">
+                <div class="box-title">在太阳坠落之前<br>（Before The Sun Fall）</div>
+                <div class="box-date">2023-02-25</div>
+            </a>
+        </div>
+
+        <div class="box right-star" style="--delay: 9">
+            <a href="https://weibo.com/7487788632/4848006945310497" target="_blank">
+                <div class="box-title">卡戎<br>（Charon）</div>
+                <div class="box-date">2022-12-19</div>
+            </a>
+        </div>
+
+        <div class="box right-star" style="--delay: 10">
+            <a href="https://weibo.com/7487788632/4754606460502618" target="_blank">
+                <div class="box-title">冥王之星<br>（Pluto）</div>
+                <div class="box-date">2022-04-06</div>
+                <div class="box-tag"></div>
+            </a>
+        </div>
+    </div>
+
+
+    <script>
+        // 二、鼠标跟随与左右指针核心逻辑（简化计算，无多余获取）
+        const cursorDot = document.getElementById('cursorDot');
+        const leftPointer = document.getElementById('leftPointer');
+        const rightPointer = document.getElementById('rightPointer');
+        let currentHoveredBox = null;
+        let currentStarSide = null;
+
+        // 获取指针原点（磁带两孔）的实时位置（简化计算，仅获取一次初始位置）
+        const leftOrigin = leftPointer ? getPointerOrigin(leftPointer) : { x: 0, y: 0 };
+        const rightOrigin = rightPointer ? getPointerOrigin(rightPointer) : { x: 0, y: 0 };
+
+        function getPointerOrigin(pointer) {
+            const rect = pointer.getBoundingClientRect();
+            return {
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2
+            };
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            const x = e.clientX;
+            const y = e.clientY;
+
+            // 平滑跟随（装饰点）
+            cursorDot.style.left = `${x}px`;
+            cursorDot.style.top = `${y}px`;
+
+            // 简化装饰点大小变化，无三角函数计算
+            const size = x % 20 > 10 ? 20 : 15;
+            cursorDot.style.width = `${size}px`;
+            cursorDot.style.height = `${size}px`;
+
+            // 左右指针旋转与显隐逻辑（简化计算，复用初始原点）
+            if (currentHoveredBox && currentStarSide) {
+                const boxRect = currentHoveredBox.getBoundingClientRect();
+                const boxCenterX = boxRect.left + boxRect.width / 2;
+                const boxCenterY = boxRect.top + boxRect.height / 2;
+
+                if (currentStarSide === 'left' && leftPointer) {
+                    const angle = Math.atan2(boxCenterY - leftOrigin.y, boxCenterX - leftOrigin.x) * (180 / Math.PI);
+                    leftPointer.style.opacity = 1;
+                    rightPointer.style.opacity = 0;
+                    leftPointer.style.transform = `translate(-50%, -50%) rotate(${angle + 90}deg)`;
+                } else if (currentStarSide === 'right' && rightPointer) {
+                    const angle = Math.atan2(boxCenterY - rightOrigin.y, boxCenterX - rightOrigin.x) * (180 / Math.PI);
+                    rightPointer.style.opacity = 1;
+                    leftPointer.style.opacity = 0;
+                    rightPointer.style.transform = `translate(-50%, -50%) rotate(${angle + 90}deg)`;
+                }
+            } else {
+                if (leftPointer) leftPointer.style.opacity = 0;
+                if (rightPointer) rightPointer.style.opacity = 0;
+            }
+        });
+
+        // 星星模块悬停事件监听（区分左右区域）
+        const allBoxes = document.querySelectorAll('.box');
+        allBoxes.forEach(box => {
+            box.addEventListener('mouseenter', () => {
+                currentHoveredBox = box;
+                currentStarSide = box.classList.contains('left-star') ? 'left' : 'right';
+            });
+            box.addEventListener('mouseleave', () => {
+                currentHoveredBox = null;
+                currentStarSide = null;
+            });
+        });
+
+        // 三、链接新窗口打开（统一设置，无多余遍历）
+        document.querySelectorAll('.box a[href]').forEach(link => {
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener noreferrer');
+        });
+
+        // 四、移除页面滚动视差效果（最大性能优化，该效果是卡顿元凶之一）
+    </script>
+</body>
+
+</html>

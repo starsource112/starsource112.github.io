@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>现场/PV合集</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Noto+Sans+SC:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            /* 极光粉渐变背景，与胶卷、box粉色契合 */
+            background: linear-gradient(135deg, #000000 0%, #1a0011 50%, #000000 100%);
+            padding: 50px;
+        }
+
+        /* 重构：创建顶部同行容器，包含图片和计日组件 */
+        .top-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            max-width: 1450px;
+            width: 100%;
+            margin: 0 auto 40px;
+            cursor: pointer;
+            /* 关键：容器本身不添加任何倾斜相关样式，保持水平 */
+        }
+
+        /* 调整：film.img 容器，极光粉阴影，契合整体色调 */
+        .top-img-container {
+            width: 220px;
+            margin-right: 40px;
+            text-align: center;
+            /* 新增：给胶卷容器添加过渡，倾斜更平滑 */
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .film-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            /* 新增：胶卷本身默认水平，添加过渡 */
+            transition: transform 0.3s ease-in-out;
+        }
+
+        /* 关键：仅让胶卷（.film-img）单独倾斜，不影响父容器和计日组件 */
+        .top-img-container.clicked .film-img {
+            transform: rotate(7deg);
+            /* 胶卷单独倾斜7度，可调整数值 */
+        }
+
+        /* 计日组件样式：初始水平不发光，点击后开始持续闪光，贴合胶卷色调 */
+        .count-card {
+            background: #000000;
+            padding: 1.5rem 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 6px 24px rgba(255, 184, 227, 0.2);
+            text-align: center;
+            transition: box-shadow 0.3s ease-in-out;
+            position: relative;
+            overflow: hidden;
+            transform: rotate(0deg);
+            /* 始终水平，无需抵消任何倾斜 */
+        }
+
+        /* 计日组件闪光：初始隐藏，点击后（添加active类）开始持续缓慢闪光 */
+        .count-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 184, 227, 0.4), transparent);
+            transform: skewX(-20deg);
+            /* 初始不显示闪光 */
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            /* 闪光动画（仅active时生效） */
+            animation: slowFlash 6s ease-in-out infinite;
+        }
+
+        /* 点击后触发闪光（JS添加此类） */
+        .count-card.active::after {
+            opacity: 1;
+        }
+
+        @keyframes slowFlash {
+            0% {
+                left: -100%;
+            }
+
+            50% {
+                left: 150%;
+            }
+
+            100% {
+                left: 150%;
+            }
+        }
+
+        .count-text {
+            font-size: 1.8rem;
+            color: #ffc8e3;
+            margin-bottom: 0.8rem;
+        }
+
+        .count-days {
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 2rem;
+            text-shadow: 0 0 8px rgba(255, 184, 227, 0.8);
+            transition: transform 0.2s ease;
+        }
+
+        .count-card:hover .count-days {
+            transform: scale(1.05);
+        }
+
+        .start-tip {
+            font-size: 1.3rem;
+            color: #ffc8e3;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #ffb8e3;
+        }
+
+        /* 初始状态：box容器隐藏，点击film后显示 | 核心修改：gap设为0，box无间隙紧挨 */
+        .box-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-auto-rows: 1fr;
+            gap: 0;
+            /* 改为0，取消所有间隙，box紧挨着排列 */
+            max-width: 1450px;
+            margin: 0 auto;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease;
+        }
+
+        .box-container.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* ========== 核心调整：box颜色贴合胶卷（极光粉），无间隙紧挨 ========== */
+        .box {
+            background-color: #000000;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(255, 184, 227, 0.1);
+            transition: all 0.3s ease-in-out;
+            display: flex;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(20px);
+            /* 消除内边距带来的视觉间隙，保证紧密贴合 */
+            border: 0;
+            margin: 0;
+        }
+
+        /* box悬停：极光粉背景，增强与胶卷契合度 */
+        .box:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 8px 20px rgba(255, 184, 227, 0.3);
+            background-color: #ffc0e8;
+        }
+
+        .box a {
+            text-decoration: none;
+            color: inherit;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s ease;
+        }
+
+        .box:hover a {
+            transform: translateX(2px);
+        }
+
+        .box-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            word-wrap: break-word;
+            text-shadow: 0 0 12px #ff69b4, 0 0 25px #ff69b4aa, 0 0 45px #ff69b495;
+            transition: text-shadow 0.3s ease;
+        }
+
+        .box:hover .box-title {
+            text-shadow: 0 0 15px #ff69b4, 0 0 25px #ff69b4aa, 0 0 50px #ff69b495;
+        }
+
+        .box-date {
+            font-size: 24px;
+            color: #ffffff;
+            margin-bottom: 12px;
+            word-wrap: break-word;
+            font-family: 'Noto Sans SC', sans-serif;
+            text-shadow: 0 0 10px #ffc8e3, 0 0 20px #ffd8ee, 0 0 40px #ffe0f0, 0 0 40px #ffe8f5;
+        }
+
+        /* ========== 核心修改：优化tag未点击前（初始状态）颜色，契合整体极光粉/胶卷色调 ========== */
+        .box-tag {
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            margin-top: auto;
+            word-wrap: break-word;
+            font-family: '宋体';
+            font-weight: bold;
+            /* 初始颜色：极光粉深色调，贴合胶卷/背景，不突兀 */
+            color: #ff69b4aa;
+            /* 初始背景：暗粉黑，契合整体深色背景+极光粉风格 */
+            background-color: #000000;
+        }
+
+        .box:hover .box-tag {
+            color: rgb(120, 0, 90);
+            background-color: #fffbfd;
+        }
+
+        .tag-img {
+            width: 30px;
+            height: 30px;
+            display: inline-block;
+            /* 初始背景：暗粉黑，契合整体色调 */
+            background-color: #1a0011;
+        }
+
+        .box:hover .tag-img {
+            background-color: #fffbfd;
+        }
+
+        /* 全屏图片遮罩层 */
+        .fullscreen-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .fullscreen-mask.active {
+            opacity: 1;
+        }
+
+        .fullscreen-img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 8px;
+            transform: scale(0.98);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .fullscreen-mask.active .fullscreen-img {
+            transform: scale(1);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 顶部同行容器（包含film和计日组件，点击整个区域触发box显示） -->
+    <div class="top-container" id="filmTrigger">
+        <div class="top-img-container" id="imgContainer">
+            <img src="film.png" alt="LOMOCHROME PINK 400 胶卷" class="film-img">
+        </div>
+
+        <!-- 给计日组件添加ID，方便获取元素 -->
+        <div class="count-card" id="countCard">
+            <p class="count-text">「天体引力」已诞生<span class="count-days" id="daysCount"></span>天❣️</p>
+            <p class="start-tip">2024.02.25——</p>
+        </div>
+    </div>
+
+    <div class="image-display-area" style="text-align: center; margin: 30px auto; max-width: 800px;">
+        <img src="maya1.jpg" alt="展示对应图片" id="targetDisplayImg"
+            style="display: none; max-width: 100%; height: auto; border-radius: 12px;">
+    </div>
+
+    <!-- box容器：初始隐藏，无间隙排列 -->
+    <div class="box-container" id="boxContainer">
+        <div class="box" id="gravityBox">
+            <a>
+                <div class="box-title">引力<br>（Gravity）</div>
+                <div class="box-date">2024-02-25</div>
+                <div class="box-tag">
+                    <img src="moon.png" alt="月亮图标" class="tag-img">
+                    INTRO
+                </div>
+            </a>
+        </div>
+
+        <!-- 修改1：天空树 - 新链接 + target="_blank" 打开新标签页 -->
+        <div class="box">
+            <a href="https://b23.tv/GRKmVsj" target="_blank">
+                <div class="box-title">天空树<br>（Sky Tree）</div>
+                <div class="box-date">2020-11-26</div>
+                <div class="box-tag">
+                    <img src="moon.png" alt="月亮图标" class="tag-img">
+                    月亮是天空中的树
+                </div>
+            </a>
+        </div>
+
+        <!-- 修改2：冰岛以北 - 新链接 + target="_blank" 打开新标签页 -->
+        <div class="box">
+            <a href="https://b23.tv/Y3oyQ5l" target="_blank">
+                <div class="box-title">冰岛以北<br>（To The North）</div>
+                <div class="box-date">2023-06-03</div>
+                <div class="box-tag">
+                    <img src="moon.png" alt="月亮图标" class="tag-img">
+                    朝向冰岛北岸
+                </div>
+            </a>
+        </div>
+
+        <div class="box">
+            <a href="https://www.bilibili.com/video/BV1S9oSYuExb?p=3&vd_source=256b26841f38fafbb1b886ddbbe664d1" target="_blank">
+                <div class="box-title">荆棘鸟<br>（The Thorn Birds）</div>
+                <div class="box-date">2024-02-25</div>
+                <div class="box-tag">
+                    <img src="moon.png" alt="月亮图标" class="tag-img">
+                    你需要为此反抗
+                </div>
+            </a>
+        </div>
+
+        <div class="box">
+            <a href="https://www.bilibili.com/video/BV13p4y1T7fa?vd_source=256b26841f38fafbb1b886ddbbe664d1" target="_blank">
+                <div class="box-title">请认真听，我的名字<br>（Can You Hear My Name）</div>
+                <div class="box-date">2021-10-05</div>
+                <div class="box-tag">
+                    <img src="moon.png" alt="月亮图标" class="tag-img">
+                    Carve to the end
+                </div>
+            </a>
+        </div>
+
+        <!-- 修改3：在太阳坠落之前 - 新链接 + target="_blank" 打开新标签页 -->
+        <div class="box">
+            <a href="https://b23.tv/GTOD0SD" target="_blank">
+                <div class="box-title">在太阳坠落之前<br>（Before The Sun Fall）</div>
+                <div class="box-date">2023-02-25</div>
+                <div class="box-tag">
+                    <img src="moon.png" alt="月亮图标" class="tag-img">
+                    不要告别，保持信念
+                </div>
+            </a>
+        </div>
+
+        <div class="box">
+            <a href="https://www.bilibili.com/video/BV1Lq4y1a7Ss?vd_source=256b26841f38fafbb1b886ddbbe664d1" target="_blank">
+                <div class="box-title">冥王之星<br>（Pluto）</div>
+                <div class="box-date">2022-04-06</div>
+                <div class="box-tag">
+                    <img src="moon.png" alt="月亮图标" class="tag-img">
+                    你还能否发觉这个我
+                </div>
+            </a>
+        </div>
+
+        <div class="box">
+            <a href="https://www.bilibili.com/video/BV1yv4y1Q7ZG?vd_source=256b26841f38fafbb1b886ddbbe664d1" target="_blank">
+                <div class="box-title">卡戎<br>（Charon）</div>
+                <div class="box-date">2022-12-19</div>
+                <div class="box-tag">
+                    <img src="moon.png" alt="月亮图标" class="tag-img">
+                    既然命运使我们相拥
+                </div>
+            </a>
+        </div>
+
+        <div class="box">
+            <a href="https://www.bilibili.com/video/BV1n94y1n76j?vd_source=256b26841f38fafbb1b886ddbbe664d1" target="_blank">
+                <div class="box-title">连梦<br>（Dream of Losing You）</div>
+                <div class="box-date">2023-11-28</div>
+                <div class="box-tag">
+                    <img src="moon.png" alt="月亮图标" class="tag-img">
+                    让终局回溯到最初的海湾
+                </div>
+            </a>
+        </div>
+
+        <div class="box">
+            <a href="https://www.bilibili.com/video/BV1Z44y177N5?vd_source=256b26841f38fafbb1b886ddbbe664d1" target="_blank">
+                <div class="box-title">一个星际的距离<br>（Interstellar）</div>
+                <div class="box-date">2021-12-31</div>
+                <div class="box-tag">
+                    <img src="moon.png" alt="月亮图标" class="tag-img">
+                    我一定会挣脱所有引力
+                </div>
+            </a>
+        </div>
+
+        <!-- 修改4：蒲公英 - 新链接 + target="_blank" 打开新标签页 -->
+        <div class="box">
+            <a href="https://b23.tv/ZQNd750" target="_blank">
+                <div class="box-title">蒲公英<br>（Dandelion）</div>
+                <div class="box-date">2023-12-30</div>
+                <div class="box-tag">
+                    <img src="moon.png" alt="月亮图标" class="tag-img">
+                    自由地感受着世界的轮廓
+                </div>
+            </a>
+        </div>
+
+        <div class="box" id="moonlightBox">
+            <a>
+                <div class="box-title">月光<br>（Moon Light）</div>
+                <div class="box-date">2024-02-25</div>
+                <div class="box-tag">
+                    <img src="moon.png" alt="月亮图标" class="tag-img">
+                    与尘埃共舞着
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="fullscreen-mask" id="fullscreenMask">
+        <img src="" alt="全屏展示图片" class="fullscreen-img" id="fullscreenImg">
+    </div>
+
+    <script>
+        // 一、计日组件
+        const startDate = new Date('2024-02-25');
+        const daysElement = document.getElementById('daysCount');
+        function calculateDays() {
+            const now = new Date();
+            const diffTime = now.getTime() - startDate.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays;
+        }
+        daysElement.textContent = calculateDays();
+        setInterval(() => {
+            daysElement.textContent = calculateDays();
+        }, 1000 * 60 * 60 * 24);
+
+        // 二、点击film后：胶卷倾斜+计日组件开始发光+box逐个出现
+        const filmTrigger = document.getElementById('filmTrigger');
+        const boxContainer = document.getElementById('boxContainer');
+        const boxes = document.querySelectorAll('.box');
+        const countCard = document.getElementById('countCard');
+        const imgContainer = document.getElementById('imgContainer'); // 新增：获取胶卷容器
+
+        boxContainer.classList.remove('active');
+        // 初始状态：计日组件不发光（无active类）
+        countCard.classList.remove('active');
+
+        filmTrigger.addEventListener('click', () => {
+            // 1. 胶卷单独倾斜（仅给胶卷容器添加clicked类，不影响其他元素）
+            imgContainer.classList.add('clicked');
+
+            // 2. 计日组件开始发光（添加active类，触发闪光动画）
+            countCard.classList.add('active');
+
+            // 3. 显示容器+box逐个出现
+            boxContainer.classList.add('active');
+            boxes.forEach((box, index) => {
+                setTimeout(() => {
+                    box.style.transition = `opacity 0.5s ease, transform 0.5s ease`;
+                    box.style.opacity = 1;
+                    box.style.transform = 'translateY(0)';
+                }, index * 150);
+            });
+
+            // 4. 防止重复点击
+            filmTrigger.style.pointerEvents = 'none';
+        });
+
+        // 三、全屏图片展示
+        const imgMap = {
+            gravity: "maya1.jpg",
+            moonlight: "maya1.jpg"
+        };
+        const gravityBox = document.getElementById('gravityBox');
+        const moonlightBox = document.getElementById('moonlightBox');
+        const fullscreenMask = document.getElementById('fullscreenMask');
+        const fullscreenImg = document.getElementById('fullscreenImg');
+
+        function showFullscreenImg(imgUrl) {
+            fullscreenImg.src = imgUrl;
+            fullscreenMask.style.display = 'flex';
+            setTimeout(() => {
+                fullscreenMask.classList.add('active');
+            }, 10);
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeFullscreen() {
+            fullscreenMask.classList.remove('active');
+            setTimeout(() => {
+                fullscreenMask.style.display = 'none';
+                fullscreenImg.src = '';
+                document.body.style.overflow = 'auto';
+            }, 300);
+        }
+
+        gravityBox.addEventListener('click', () => showFullscreenImg(imgMap.gravity));
+        moonlightBox.addEventListener('click', () => showFullscreenImg(imgMap.moonlight));
+        fullscreenMask.addEventListener('click', closeFullscreen);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeFullscreen();
+        });
+
+        // 四、链接box的点击反馈
+        document.querySelectorAll('.box a[href]').forEach(link => {
+            link.parentElement.addEventListener('click', (e) => {
+                e.currentTarget.style.transform = 'scale(0.98) translateY(-6px)';
+                setTimeout(() => {
+                    e.currentTarget.style.transform = '';
+                }, 150);
+            });
+        });
+    </script>
+</body>
+
+</html>
