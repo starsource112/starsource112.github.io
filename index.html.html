@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天体引力</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+
+        /* ======================================
+           新增：加载页面样式（简约黑色+进度条+文案）
+           ====================================== */
+        .loader-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000; /* 黑色背景 */
+            z-index: 999999; /* 最高层级，覆盖所有内容 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 1s ease-out, visibility 1s ease-out; /* 平滑消失过渡 */
+        }
+
+        /* 加载文案样式 */
+        .loader-text {
+            color: #fff; /* 白色文案，简约清晰 */
+            text-align: center;
+            line-height: 2; /* 行间距，提升可读性 */
+            font-size: 16px;
+            margin-bottom: 50px;
+            max-width: 800px;
+            padding: 0 20px;
+            letter-spacing: 1px; /* 轻微字间距，更显质感 */
+        }
+
+        /* 简约进度条容器 */
+        .loader-progress-container {
+            width: 60%;
+            height: 4px;
+            background-color: #333; /* 深灰色背景，凸显进度条 */
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        /* 进度条本身 */
+        .loader-progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #fff; /* 白色进度条，简约大气 */
+            border-radius: 2px;
+            transition: width 0.3s ease; /* 进度平滑增长 */
+        }
+
+        /* 加载完成后隐藏加载页 */
+        .loader-wrapper.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none; /* 隐藏后不拦截点击 */
+        }
+
+        /* ======================================
+           原有样式（完全保留，未做修改）
+           ====================================== */
+        /* 全局容器：分隔标签栏和背景容器，防止越界 */
+        .global-wrapper {
+            width: 1450px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        /* 顶部标签栏：【仅修改2处，解决间距+下拉菜单显示不全】 */
+        .tab-bar {
+            width: 1450px;
+            /* 固定宽度，和全局容器一致 */
+            display: flex;
+            justify-content: space-around;
+            gap: 20px;
+            padding: 20px 0;
+            margin-bottom: 10px;
+            /* 【修改1】调整为20px，解决间距过远（原60px，贴近但不遮挡） */
+            /* position: fixed; 【保留注释】移除fixed定位，实现置顶但不固定 */
+            /* top: 0; 【保留注释】移除fixed配套偏移 */
+            /* left: 50%; 【保留注释】移除fixed配套偏移 */
+            /* transform: translateX(-50%); 【保留注释】移除fixed配套偏移 */
+            background-color: rgba(0, 0, 0, 0.99);
+            /* 补充背景色，防止透显 */
+            z-index: 9999;
+            /* 保留原有，确保不被下方元素遮挡，但不固定 */
+            position: relative;
+            /* 【修改2】新增这1行，解决标签2下拉菜单显示不全（作为下拉菜单的完整包含块） */
+        }
+
+        /* 5个标签项：保留原图尺寸+核心交互样式 */
+        .tab-bar .tab-item {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 120px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            text-indent: -9999px;
+            position: relative;
+            /* 下拉菜单的定位基准 */
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            overflow: visible !important;
+            /* 强制溢出可见，防止下拉被截断 */
+            box-shadow: none;
+            /* 初始无阴影，确保暂停/结束后恢复干净 */
+            filter: brightness(1);
+            /* 初始亮度，统一基准 */
+            transform: scale(1);
+            /* 初始尺寸，统一基准 */
+        }
+
+        .tab-bar .tab2:hover,
+        .tab-bar .tab4:hover {
+            filter: brightness(3);
+        }
+
+        /* 标签3：蓝色系发光 */
+        .tab-bar .tab3:hover {
+            filter: brightness(2);
+            box-shadow: 8px 8px 15px #4dbeff;
+        }
+
+        /* 标签5：hover状态（仅鼠标悬浮且未播放时生效） */
+        .tab-bar .tab5:not(.playing):hover {
+            filter: brightness(1.5) drop-shadow(0 0 16px rgb(255, 114, 184));
+            transform: scale(1.2);
+        }
+
+        /* 标签5：播放状态样式（优先级高于hover，避免冲突） */
+        .tab-bar .tab5.playing {
+            filter: brightness(2) drop-shadow(0 0 16px rgb(186, 95, 255)) !important;
+            transform: scale(1.2) !important;
+        }
+
+        /* 标签按压效果：弱化阴影，保持风格一致 */
+        .tab-bar .tab-item:active {
+            transform: scale(0.995);
+            filter: brightness(0.95);
+            box-shadow: 3px 3px 10px currentColor, 0 0 8px currentColor;
+        }
+
+        /* 标签背景图 */
+        .tab-bar .tab1 {
+            background-image: url("./t1.jpg");
+        }
+
+        .tab-bar .tab2 {
+            background-image: url("./t2.jpg");
+        }
+
+        .tab-bar .tab3 {
+            background-image: url("./t3.jpg");
+        }
+
+        .tab-bar .tab4 {
+            background-image: url("./t4.jpg");
+        }
+
+        .tab-bar .tab5 {
+            background-image: url("./t5.jpg");
+        }
+
+        /* 下拉菜单：强制可见样式（完全保留，未做任何修改） */
+        .tab-dropdown {
+            text-indent: 0 !important;
+            display: none !important;
+            position: absolute !important;
+            top: 100% !important;
+            left: 0 !important;
+            width: 100% !important;
+            background-color: #000 !important;
+            /* border: 2px solid rgba(255, 232, 56, 0.7) !important; */
+            border-top: none !important;
+            z-index: 99999 !important;
+            padding: 10px 0 !important;
+        }
+
+        /* 下拉选项：高对比度，绝对清晰（完全保留，未做任何修改） */
+        /* 下拉选项：高对比度，绝对清晰（仅新增/保留紫色背景） */
+        .tab-dropdown a {
+            text-indent: 0 !important;
+            color: #fff !important;
+            text-decoration: none;
+            display: block !important;
+            padding: 15px 0 !important;
+            text-align: center !important;
+            font-size: 16px !important;
+            /* transition: all 0.3s ease !important; */
+            background-color: rgb(0, 0, 0) !important;
+            /* 新增：默认背景色（统一紫色） */
+        }
+
+        .tab-dropdown a:hover {
+            background-color: rgb(63, 74, 168) !important;
+            /* 保留：hover悬浮背景色（统一紫色，若想加深可微调色值） */
+            color: #000 !important;
+        }
+
+        /* hover时强制显示下拉菜单（完全保留，未做任何修改） */
+        .tab-bar .tab2:hover .tab-dropdown,
+        .tab-bar .tab4:hover .tab-dropdown {
+            display: block !important;
+            animation: dropdownFadeIn 0.3s ease !important;
+        }
+
+        @keyframes dropdownFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 背景容器：下移，避免被固定标签栏遮挡（修复z-index，新增点击指针） */
+        .container {
+            position: relative;
+            width: 100%;
+            height: 1010px;
+            margin: -100px 0 auto;
+            background: url("./Back.jpg") no-repeat center center;
+            background-size: 100% 100%;
+            z-index: 1; /* 调整为1，作为基础层级 */
+            cursor: pointer; /* 背景区域显示点击指针，提示可点击 */
+        }
+
+        /* 关键修复：内部元素（星星/圆环）优先响应点击，不被背景拦截 */
+        .star-pink, .ring-text, .star-blue {
+            pointer-events: auto; /* 强制允许内部元素响应点击 */
+            z-index: 10; /* 远高于背景容器的z-index:1，确保层级优先 */
+        }
+
+        .star-pink {
+            position: absolute;
+            top: 745px;
+            left: 52px;
+            width: 200px;
+            height: 200px;
+            background: url("./bluestar.png") no-repeat center center;
+            background-size: 100% 100%;
+            transform: rotate(2deg);
+        }
+
+        .ring-text {
+            position: absolute;
+            top: 735px;
+            left: 232px;
+            width: 230px;
+            height: 230px;
+            background: url("./round.png") no-repeat center center;
+            background-size: 100% 100%;
+            transform: rotate(-18deg);
+            transition: transform 0.8s ease;
+        }
+
+        .star-blue {
+            position: absolute;
+            top: 745px;
+            left: 455px;
+            width: 200px;
+            height: 200px;
+            background: url("./pinkstar.png") no-repeat center center;
+            background-size: 100% 100%;
+            transform: rotate(-2deg);
+        }
+
+        .ring-text a {
+            display: block;
+            /* 转为块级元素，支持宽高设置 */
+            width: 100%;
+            /* 宽高与父容器.ring-text完全一致 */
+            height: 100%;
+        }
+
+        .ring-text:hover {
+            transform: scale(1.04);
+        }
+
+        .star-blue a {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .star-blue:hover {
+            filter: brightness(1.25);
+        }
+
+        .star-pink a {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .star-pink:hover {
+            filter: brightness(1.25);
+        }
+
+        #audio-player {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- ======================================
+         新增：加载页面（放在<body>最前面，确保优先显示）
+         ====================================== -->
+    <div class="loader-wrapper" id="loaderWrapper">
+        <div class="loader-text">
+            我们永远在渴求一种天体引力，指引自己离开肉与灵的永恒困境，驶向彼岸的阶梯。<br><br>
+            与我一同魂游太虚，环抱宇宙。<br><br>
+            时空交汇之处，就是我们见面之时。<br><br>
+            "荒诞统治世界，唯爱拯救之"
+        </div>
+        <div class="loader-progress-container">
+            <div class="loader-progress-bar" id="loaderProgressBar"></div>
+        </div>
+    </div>
+
+    <!-- ======================================
+         原有页面内容（完全保留，未做修改）
+         ====================================== -->
+    <div class="global-wrapper">
+        <!-- 顶部标签栏（完全保留，未做任何修改） -->
+        <div class="tab-bar">
+            <a class="tab-item tab1" href="javascript:void(0);">高音谱号</a>
+            <div class="tab-item tab2">
+                微博
+                <div class="tab-dropdown">
+                    <a href="https://weibo.com/u/7487788632" target="_blank">发条月亮</a>
+                    <a href="https://weibo.com/u/5894700733" target="_blank">王舜禾</a>
+                    <a href="https://weibo.com/u/5999693491" target="_blank">苏文浩</a>
+                    <a href="https://weibo.com/u/2563564954" target="_blank">杨千野</a>
+                    <a href="https://weibo.com/u/5774281788" target="_blank">苏佳乐</a>
+                </div>
+            </div>
+            <a class="tab-item tab3" href="http://music.163.com/artist?id=37517258&userid=1647805486 "
+                target="_blank">网易云</a>
+            <div class="tab-item tab4">
+                B站
+                <div class="tab-dropdown">
+                    <a href="https://b23.tv/GvjM27a" target="_blank">发条月亮</a>
+                    <a href="https://b23.tv/3McKp9m" target="_blank">王舜禾</a>
+                    <a href="https://b23.tv/sUXBLlf" target="_blank">苏文浩</a>
+                    <a href="https://b23.tv/uThkHTT" target="_blank">杨千野</a>
+                    <a href="https://b23.tv/KZXtLUw" target="_blank">苏佳乐</a>
+                </div>
+            </div>
+            <div class="tab-item tab5" id="audio-toggle">音频播放</div>
+        </div>
+
+        <!-- 修复：废除<a>嵌套，直接使用.container，背景链接通过JS绑定 -->
+        <div class="container" id="background-container">
+            <div class="star-pink">
+                <a href="../Blue/Blue.html" target="_blank"></a>
+            </div>
+            <div class="ring-text">
+                <a href="http://music.163.com/album/186870190/?userid=1647805486" target="_blank"></a>
+            </div>
+            <div class="star-blue">
+                <a href="../Pink/Pink.html" target="_blank"></a>
+            </div>
+        </div>
+    </div>
+
+    <audio id="audio-player" src="BGM.mp3" type="audio/mpeg"></audio>
+
+    <script>
+        // ======================================
+        // 新增：加载页面逻辑（简约进度条+平滑过渡）
+        // ======================================
+        const loaderWrapper = document.getElementById('loaderWrapper');
+        const loaderProgressBar = document.getElementById('loaderProgressBar');
+        let progress = 0;
+
+        // 模拟加载进度（也可以绑定真实页面资源加载事件，这里简约模拟，体验更流畅）
+        const loadInterval = setInterval(() => {
+            // 进度增长（随机小幅度增长，更显自然）
+            progress += Math.random() * 10;
+            // 限制进度不超过100%
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(loadInterval); // 停止进度增长
+                // 进度完成后，延迟一小会儿隐藏加载页（给用户看完全文案的时间）
+                setTimeout(() => {
+                    loaderWrapper.classList.add('hidden');
+                }, 800);
+            }
+            // 更新进度条宽度
+            loaderProgressBar.style.width = `${progress}%`;
+        }, 200);
+
+        // ======================================
+        // 原有音频逻辑（完全保留，未做修改）
+        // ======================================
+        const audioPlayer = document.getElementById('audio-player');
+        const audioToggle = document.getElementById('audio-toggle');
+
+        // 【仅修改1处，彻底解决标签5暂停后阴影无法去除】
+        audioToggle.addEventListener('click', function () {
+            if (audioPlayer.paused) {
+                // 播放状态：添加playing类，固定粉色阴影
+                audioPlayer.play();
+                this.classList.add('playing');
+                this.removeAttribute('style');
+            } else {
+                // 暂停状态：彻底重置，移除所有相关样式（核心修复）
+                audioPlayer.pause();
+                this.classList.remove('playing');
+                // 关键：不仅重置行内样式，还要强制清除filter的drop-shadow（直接覆盖为纯净的brightness(1)）
+                this.style.filter = 'brightness(1) !important'; // 【修改3】新增!important，强制覆盖所有样式
+                this.style.boxShadow = 'none !important';
+                this.style.transform = 'scale(1) !important';
+            }
+        });
+
+        // 音频播放结束：彻底恢复原始样式
+        audioPlayer.addEventListener('ended', function () {
+            audioToggle.classList.remove('playing');
+            audioToggle.style.filter = 'brightness(1) !important';
+            audioToggle.style.boxShadow = 'none !important';
+            audioToggle.style.transform = 'scale(1) !important';
+        });
+
+        // ======================================
+        // 原有背景点击逻辑（完全保留，未做修改）
+        // ======================================
+        const backgroundContainer = document.getElementById('background-container');
+        // 新增：绑定背景容器的点击事件（替代原来的外部<a>标签，避免嵌套）
+        backgroundContainer.addEventListener('click', function (e) {
+            // 关键：判断点击目标是否是背景容器本身（不是内部星星/圆环）
+            if (e.target === this) {
+                // 打开背景链接，和你原来的href一致
+                window.open('../Trip/trip.html', '_blank');
+            }
+        });
+    </script>
+</body>
+
+</html>
